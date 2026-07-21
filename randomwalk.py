@@ -12,6 +12,7 @@ def main():
     ax.grid()
 
     for i in range(num_randomwalks):
+        x, y = 0, 0
         color = (random.random(), random.random(), random.random())
         xs, ys = [x], [y]
         for _ in range(num_steps):
