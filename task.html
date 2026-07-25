@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Task {{ task.id }} - {{ task.name }}{% endblock %}
+
+{% block content %}
+<section>
+  <h2>{{ task.id }}. {{ task.name }}</h2>
+  <p>{{ task.description }}</p>
+  {% if task.notes %}
+  <div class="note">{{ task.notes }}</div>
+  {% endif %}
+  <form method="post">
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+      {% for field in task.fields %}
+      <div class="form-row">
+        <label for="{{ field.name }}">{{ field.label }}</label>
+        <input
+          id="{{ field.name }}"
+          name="{{ field.name }}"
+          type="{{ field.type }}"
+          value="{{ form.get(field.name, field.value) }}"
+          {% if field.min is not none %}min="{{ field.min }}"{% endif %}
+          {% if field.max is not none %}max="{{ field.max }}"{% endif %}
+          {% if field.step is not none %}step="{{ field.step }}"{% endif %}
+          placeholder="{{ field.placeholder or '' }}"
+        />
+      </div>
+      {% endfor %}
+    </div>
+    <p>
+      <button type="submit">Generate Graph</button>
+    </p>
+  </form>
+  {% if results %}
+  <section class="results">
+    <h3>Generated Graphs</h3>
+    {% for image in results %}
+      <img src="{{ image }}" alt="Generated graph for task {{ task.id }}" />
+    {% endfor %}
+  </section>
+  {% endif %}
+</section>
+{% endblock %}

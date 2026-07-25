@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Flask Physics Tasks{% endblock %}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f7f9fc;
+        margin: 0;
+        padding: 0;
+        color: #1a202c;
+      }
+      header {
+        background: #2f4f7f;
+        color: white;
+        padding: 1rem 1.5rem;
+      }
+      header a {
+        color: white;
+        text-decoration: none;
+      }
+      main {
+        max-width: 980px;
+        margin: 1.5rem auto;
+        padding: 0 1rem 2rem;
+      }
+      section {
+        background: white;
+        border: 1px solid #dbe2eb;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(43, 57, 82, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      .task-card {
+        padding: 1rem;
+        border: 1px solid #dbe2eb;
+        border-radius: 10px;
+        background: #ffffff;
+      }
+      .task-card h2 {
+        margin-top: 0;
+      }
+      .button,
+      button {
+        background: #2f4f7f;
+        border: none;
+        color: white;
+        padding: 0.8rem 1.2rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      button:hover,
+      .button:hover {
+        background: #253d60;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #29313d;
+        font-weight: 600;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ccd7e6;
+        border-radius: 8px;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+      .form-row {
+        display: grid;
+        gap: 0.5rem;
+      }
+      .results img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #dbe2eb;
+        border-radius: 10px;
+      }
+      .note {
+        background: #eef2ff;
+        border-left: 4px solid #4f46e5;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/">
+        <h1>Flask Task Selector Graphs</h1>
+      </a>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
