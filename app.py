@@ -1,14 +1,19 @@
 import base64
 import io
 import math
+import os
+import tempfile
 from dataclasses import dataclass
 from typing import Any
 
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib.animation as manimation
 import matplotlib.pyplot as plt
 import numpy as np
 from flask import Flask, render_template, request
+
+from task2 import bounce
 
 app = Flask(__name__)
 
@@ -51,7 +56,7 @@ TASKS: dict[int, TaskConfig] = {
             TaskField(name='temperature_c', label='Temperature (°C)', type='number', value='100', min='0', max='500', step='10'),
             TaskField(name='time_ps', label='Simulation Time (ps)', type='number', value='50', min='1', max='200', step='1'),
         ],
-        notes='Using a simplified model optimized for interactive use.',
+        notes='Renders an animated GIF using the same physics and visual style as task2.py.',
     ),
     3: TaskConfig(
         id=3,
@@ -162,8 +167,19 @@ def task1_plot(step_size: int, num_steps: int, num_randomwalks: int) -> list[str
 
 
 def task2_plot(num_particles: int, temperature_c: float, time_ps: float) -> list[str]:
-    num_particles = max(10, min(num_particles, 200))
-    num_small = int(num_particles)
+    """
+    Render an animated GIF
+    
+    uses the same physics
+    style
+    line
+    brownian
+    []
+    """
+    rng = np.random.default_rng()
+
+    # Physical parameters (identical to task2.py)
+    N = max(10, min(int(num_particles), 200))
     m = 28.96e-3 / 6.02e23
     M = 10.0 * m
     r = 0.16
@@ -171,109 +187,143 @@ def task2_plot(num_particles: int, temperature_c: float, time_ps: float) -> list
     a = 7.0 * R
     C = 1.0
     k_B = 1.38e-23
-    T = temperature_c + 273.15
-    v = math.sqrt(3.0 * k_B * T / m) / 1000.0
-    V = math.sqrt(3.0 * k_B * T / M) / 1000.0
+    T_K = float(temperature_c) + 273.15
+    v = math.sqrt(3.0 * k_B * T_K/ m) / 1000.0 #nm/ps
+    V = math.sqrt(3.0 * k_B * T_K / M) / 1000.0
     Kn = 15.0
-    dt = max(0.001, 0.01 * Kn * r / v)
-    steps = min(int(time_ps / dt), 300)
+    t_max = max(1.0,  float(time_ps))
+    dt = 0.01 * Kn * r / v
 
-    x = np.empty(num_small)
-    y = np.empty(num_small)
-    rng = np.random.default_rng(1234)
-    for n in range(num_small):
+    total_steps = max(1, int(t_max / dt))
+    max_frames = 80
+    stride = max(1, total_steps // max_frames)
+
+    #Initial position and velocity of the large particle
+    X = 0.5 * a
+    Y = 0.5 * a
+    theta0 = rng.uniform(0.0, 2.0 * math.pi)
+    Vx = V * math.cos(theta0)
+    Vy = V * math.sin(theta0)
+
+    #Initital positions of small particles (rejection sample so none overlap
+    #the large particle).
+    x = np.empty(N)
+    y = np.empty(N)
+    for n in range(N):
         while True:
             cx = r + rng.random() * (a - 2.0 * r)
             cy = r + rng.random() * (a - 2.0 * r)
-            if np.hypot(cx - 0.5 * a, cy - 0.5 * a) >= r + R:
+            if math.hypot(cx - X, cy - Y) >= r + R:
                 x[n] = cx
                 y[n] = cy
                 break
 
-    theta = rng.uniform(0, 2 * math.pi, size=num_small)
+    #Initial velocities of small particles
+    theta = rng.uniform(0.0, 2.0 * math.pi, size=N)
     vx = v * np.cos(theta)
     vy = v * np.sin(theta)
-    X = 0.5 * a
-    Y = 0.5 * a
-    theta = rng.uniform(0, 2 * math.pi)
-    Vx = V * math.cos(theta)
-    Vy = V * math.sin(theta)
+
+    # Run the simulation and snapshot every 'stride' steps.
     trail_x = [X]
     trail_y = [Y]
+    frames: list[tuple[float, float, np.ndarray, np.ndarray, float, list[float], list[float]]] = [
+        (X, Y, x.copy(), y.copy(), 0.0, trail_x.copy(), trail_y.copy())
+    ]
 
-    def collide(x1, y1, x2, y2, ux1, uy1, ux2, uy2):
-        displacement = np.array([x2 - x1, y2 - y1], dtype=float)
-        distance = np.linalg.norm(displacement)
-        if distance == 0:
-            direction = np.array([1.0, 0.0])
-        else:
-            direction = displacement / distance
-        vx1, vy1 = ux1, uy1
-        vx2, vy2 = ux2, uy2
-        if distance <= r + R and np.dot(np.array([ux2 - ux1, uy2 - uy1]), direction) < 0:
-            centre_of_mass = (M * np.array([ux1, uy1]) + m * np.array([ux2, uy2])) / (M + m)
-            v1 = centre_of_mass - (ux1 - centre_of_mass[0]) * direction * C
-            v2 = centre_of_mass - (ux2 - centre_of_mass[0]) * direction * C
-            vx1, vy1 = v1
-            vx2, vy2 = v2
-            overlap = (r + R - distance) / 2.0
-            x1 -= overlap * direction[0]
-            y1 -= overlap * direction[1]
-            x2 += overlap * direction[0]
-            y2 += overlap * direction[1]
-        return vx1, vy1, vx2, vy2, x1, y1, x2, y2
+    t = 0.0
+    time_since_randomisation = 0.0
 
-    for _ in range(steps):
+    for step in range(1, total_steps + 1):
+        t += dt
+        time_since_randomisation += dt
+    
+        # Ballistic motion (no wall collisions - matches task2.py)
         X += Vx * dt
         Y += Vy * dt
-        if X <= R:
-            X = R
-            Vx = abs(Vx)
-        elif X >= a - R:
-            X = a - R
-            Vx = -abs(Vx)
-        if Y <= R:
-            Y = R
-            Vy = abs(Vy)
-        elif Y >= a - R:
-            Y = a - R
-            Vy = -abs(Vy)
-
         x += vx * dt
         y += vy * dt
-        below_x = x < r
-        above_x = x > a - r
-        x[below_x] = r
-        x[above_x] = a - r
-        vx[below_x] = abs(vx[below_x])
-        vx[above_x] = -abs(vx[above_x])
-        below_y = y < r
-        above_y = y > a - r
-        y[below_y] = r
-        y[above_y] = a - r
-        vy[below_y] = abs(vy[below_y])
-        vy[above_y] = -abs(vy[above_y])
-
-        for n in range(num_small):
-            Vx, Vy, vx[n], vy[n], X, Y, x[n], y[n] = collide(
-                X, Y, x[n], y[n], Vx, Vy, vx[n], vy[n]
-            )
+        
         trail_x.append(X)
         trail_y.append(Y)
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(trail_x, trail_y, '-', color='red', label='Large particle trajectory')
-    ax.scatter(x, y, s=8, color='blue', alpha=0.7, label='Small particles')
-    ax.set_aspect('equal', adjustable='box')
-    ax.set_xlim(0, a)
-    ax.set_ylim(0, a)
-    ax.set_title('Simplified Brownian Motion Final State')
-    ax.set_xlabel('x (nm)')
-    ax.set_ylabel('y (nm)')
-    ax.legend(loc='upper right')
-    ax.grid(True, alpha=0.4)
-    return [fig_to_data_uri(fig)]
+        # Collisions between small particles and the large particle
+        for n in range(N):
+            (
+                Vx,
+                Vy,
+                vx[n],
+                vy[n],
+                X,
+                x[n],
+                Y,
+                y[n],
+            ) = bounce(
+                X, Y, x[n] , y[n],
+                Vx, vx[n], Vy, vy[n],
+                C, M, m, R, r,
+            )
 
+        # Randomise small-particle velocity directions every Kn * r / v ps
+        if time_since_randomisation > Kn * r / v:
+            time_since_randomisation = 0.0
+            theta = rng.uniform(0.0, 2.0 * math.pi, size=N)
+            vx = v * np.cos(theta)
+            vy = v * np.sin(theta)
+
+        if step % stride == 0 or step == total_steps:
+            frames.append((X, Y, x.copy(), y.copy(), t, list(trail_x), list(trail_y)))
+
+    # Build the animation using the same visual style as task2.py
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.set_aspect('equal', adjustable='box')
+    ax.set_xlim(-0.2 * a, 1.2 * a)
+    ax.set_ylim(-0.2 * a, 1.2 * a)
+    ax.set_axis_off()
+
+    # Black bounding box
+    ax.plot([0, a, a, 0, 0], [0, 0, a, a, 0], 'k-', linewidth=3)
+
+    # Circle points for the large particle outline
+    angle = np.linspace(0, 2 * np.pi, 500)
+    xc = R * np.cos(angle)
+    yc = R * np.sin(angle)
+
+    X0, Y0, x0, y0, t0, tx0, ty0 = frames[0]
+    large_line, = ax.plot(X0 + xc, Y0 + yc, 'r-', linewidth=2)
+    small_points, = ax.plot(x0, y0, 'b*', markersize=4)
+    trail_line, = ax.plot(tx0, ty0, 'r-', linewidth=1, alpha=0.7)
+    ax.plot([X0], [Y0], 'g*', markersize=8) # start marker (static)
+    latest_point, = ax.plot([X0], [Y0], 'r*', markersize=8) # latest position marker
+    title = ax.set_title(f"Brownian motion simulation: t = {t0:.3f} ps", fontsize=18)
+
+    def update(i: int):
+        Xi, Yi, xi, yi, ti, txi, tyi = frames[i]
+        large_line.set_data(Xi + xc, Yi + yc)
+        small_points.set_data(xi, yi)
+        trail_line.set_data(txi, tyi)
+        latest_point.set_data([Xi], [Yi])
+        title.set_text(f"Brownian motion simulation: t = {ti:.3f} ps")
+        return large_line, small_points, trail_line, latest_point, title
+
+    anim = manimation.FuncAnimation(
+        fig, update, frames=len(frames), interval=80, blit=False
+    )
+
+    # Save the animation to a temporary GIF file and return its data URI
+    tmp = tempfile.NamedTemporaryFile(suffix='.gif', delete=False)
+    tmp.close()
+    try:
+        anim.save(tmp.name, writer=manimation.PillowWriter(fps=15))
+        with open(tmp.name, 'rb') as f:
+            data = base64.b64encode(f.read()).decode('ascii')
+    finally:
+        plt.close(fig)
+        try:
+            os.remove(tmp.name)
+        except OSError:
+            pass
+
+    return [f'data:image/gif;base64,{data}']
 
 def task3_plot(max_temperature: int, temperature_step: int) -> list[str]:
     temperatures = list(range(3000, max_temperature + 1, temperature_step))
