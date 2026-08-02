@@ -40,7 +40,7 @@ TASKS: dict[int, TaskConfig] = {
     1: TaskConfig(
         id=1,
         name='Random Walk',
-        description='Simulate 2D random walks with a selectable step size, number of steps, and number of paths.',
+        description='Create a model of a random walk of N steps of size s',
         fields=[
             TaskField(name='step_size', label='Step Size', type='number', value='1', min='1', step='1'),
             TaskField(name='num_steps', label='Number of Steps', type='number', value='100', min='1', step='1'),
@@ -50,7 +50,7 @@ TASKS: dict[int, TaskConfig] = {
     2: TaskConfig(
         id=2,
         name='Brownian Motion',
-        description='Run a simplified Brownian motion simulation and display the large particle trajectory and particle positions.',
+        description='Consider N small particles of mass m and radius r moving randomly, some of which collide with a large particle of mass M and radius R. Animate the subsequent motion of the system',
         fields=[
             TaskField(name='num_particles', label='Number of Small Particles', type='number', value='60', min='10', max='200', step='10'),
             TaskField(name='temperature_c', label='Temperature (°C)', type='number', value='100', min='0', max='500', step='10'),
@@ -61,7 +61,7 @@ TASKS: dict[int, TaskConfig] = {
     3: TaskConfig(
         id=3,
         name='Black Body and Einstein Heat Capacity',
-        description='Plot Planck black body spectra at different temperatures and Einstein-model heat capacity curves.',
+        description='Plot the Planck black body radiation spectrum for several temperatures, and also plot Einstein\'s model of molar heat capacity of solids vs temperature',
         fields=[
             TaskField(name='max_temperature', label='Maximum Temperature (K)', type='number', value='6000', min='100', max='10000', step='100'),
             TaskField(name='temperature_step', label='Temperature Step (K)', type='number', value='1000', min='100', max='2000', step='100'),
@@ -70,7 +70,7 @@ TASKS: dict[int, TaskConfig] = {
     4: TaskConfig(
         id=4,
         name='Photoelectric Effect',
-        description='Show how stopping voltage depends on photon frequency and wavelength for a selection of metals.',
+        description='Plot photoelectron stopping voltage vs frequency of incident photons for various metals',
         fields=[
             TaskField(name='metals', label='Metals', type='text', value='Caesium (Cs), Sodium (Na), Zinc (Zn), Copper (Cu)', placeholder='Comma-separated metal names'),
             TaskField(name='max_frequency', label='Maximum Frequency (×10¹⁴ Hz)', type='number', value='25', min='1', max='50', step='1'),
@@ -79,7 +79,7 @@ TASKS: dict[int, TaskConfig] = {
     5: TaskConfig(
         id=5,
         name='Hydrogen Emission Spectrum',
-        description='Plot Bohr-series transition energies and wavelengths for hydrogen emission lines.',
+        description='A graph of photon energy vs wavelength for photon emissions from hydrogen atoms due to transitions between electron energy levels',
         fields=[
             TaskField(name='max_n', label='Maximum Principal Quantum Number', type='number', value='12', min='3', max='30', step='1'),
             TaskField(name='min_series', label='Lowest Series (n_f)', type='number', value='1', min='1', max='5', step='1'),
@@ -87,8 +87,8 @@ TASKS: dict[int, TaskConfig] = {
     ),
     6: TaskConfig(
         id=6,
-        name='Simple Harmonic Oscillator',
-        description='Plot the position and energy of a mass-spring oscillator as a function of time.',
+        name='Electron diffraction',
+        description='Create a computer model of the electron wave rings on a phosphor screen with accelerating voltage V as a variable',
         fields=[
             TaskField(name='mass', label='Mass (kg)', type='number', value='0.5', min='0.01', max='10', step='0.01'),
             TaskField(name='spring_constant', label='Spring Constant (N/m)', type='number', value='20', min='0.1', max='200', step='0.1'),
@@ -98,7 +98,7 @@ TASKS: dict[int, TaskConfig] = {
     7: TaskConfig(
         id=7,
         name='Particle in a Box',
-        description='Plot quantum energy levels, wavefunctions, and probability densities for a particle in a 1D box.',
+        description='Plot energy vs quantum number, and probability densities vs displacement in the box',
         fields=[
             TaskField(name='box_length_nm', label='Box Length (nm)', type='number', value='1', min='0.1', max='10', step='0.1'),
             TaskField(name='max_n', label='Maximum Quantum Number', type='number', value='5', min='1', max='12', step='1'),
@@ -106,8 +106,8 @@ TASKS: dict[int, TaskConfig] = {
     ),
     8: TaskConfig(
         id=8,
-        name='Double-Slit Interference',
-        description='Visualize the interference pattern from a double-slit experiment.',
+        name='Quantum cryptography',
+        description='Create a visual calculator of the classical and quantum mismatch probabilities for the detection of polarized entangled photons',
         fields=[
             TaskField(name='wavelength_nm', label='Wavelength (nm)', type='number', value='550', min='100', max='800', step='10'),
             TaskField(name='slit_separation_um', label='Slit Separation (μm)', type='number', value='0.5', min='0.01', max='5', step='0.01'),
@@ -117,7 +117,7 @@ TASKS: dict[int, TaskConfig] = {
     9: TaskConfig(
         id=9,
         name='Compton Scattering',
-        description='Plot Compton wavelength shift, recoil speed, and recoil angle for different photon energies.',
+        description='Plot fractional wavelength shift, electron recoil speed and electron recoil angle vs photon scattering angle',
         fields=[
             TaskField(name='photon_energies', label='Photon Energies (keV)', type='text', value='50, 100, 200, 500, 1000', placeholder='Comma-separated values'),
             TaskField(name='num_points', label='Angular Resolution', type='number', value='200', min='50', max='1000', step='50'),
@@ -125,8 +125,8 @@ TASKS: dict[int, TaskConfig] = {
     ),
     10: TaskConfig(
         id=10,
-        name='Radioactive Decay',
-        description='Plot the exponential decay of a radioactive sample and its activity over time.',
+        name='Hydrogenic orbitals',
+        description='Plot 2D slices and 3D visualizatioins of the probability density for an electron in a hydrogenic atom',
         fields=[
             TaskField(name='initial_amount', label='Initial Amount (atoms)', type='number', value='1e6', min='1', max='1e9', step='1000'),
             TaskField(name='half_life', label='Half-Life (s)', type='number', value='30', min='1', max='1000', step='1'),
