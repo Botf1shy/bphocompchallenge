@@ -56,34 +56,25 @@ TASKS: dict[int, TaskConfig] = {
             TaskField(name='temperature_c', label='Temperature (°C)', type='number', value='100', min='0', max='500', step='10'),
             TaskField(name='time_ps', label='Simulation Time (ps)', type='number', value='50', min='1', max='200', step='1'),
         ],
-        notes='Renders an animated GIF using the same physics and visual style as task2.py.',
+        
     ),
     3: TaskConfig(
         id=3,
         name='Black Body and Einstein Heat Capacity',
         description='Plot the Planck black body radiation spectrum for several temperatures, and also plot Einstein\'s model of molar heat capacity of solids vs temperature',
-        fields=[
-            TaskField(name='max_temperature', label='Maximum Temperature (K)', type='number', value='6000', min='100', max='10000', step='100'),
-            TaskField(name='temperature_step', label='Temperature Step (K)', type='number', value='1000', min='100', max='2000', step='100'),
-        ],
+        fields=[],
     ),
     4: TaskConfig(
         id=4,
         name='Photoelectric Effect',
         description='Plot photoelectron stopping voltage vs frequency of incident photons for various metals',
-        fields=[
-            TaskField(name='metals', label='Metals', type='text', value='Caesium (Cs), Sodium (Na), Zinc (Zn), Copper (Cu)', placeholder='Comma-separated metal names'),
-            TaskField(name='max_frequency', label='Maximum Frequency (×10¹⁴ Hz)', type='number', value='25', min='1', max='50', step='1'),
-        ],
+        fields=[],
     ),
     5: TaskConfig(
         id=5,
         name='Hydrogen Emission Spectrum',
         description='A graph of photon energy vs wavelength for photon emissions from hydrogen atoms due to transitions between electron energy levels',
-        fields=[
-            TaskField(name='max_n', label='Maximum Principal Quantum Number', type='number', value='12', min='3', max='30', step='1'),
-            TaskField(name='min_series', label='Lowest Series (n_f)', type='number', value='1', min='1', max='5', step='1'),
-        ],
+        fields=[],
     ),
     6: TaskConfig(
         id=6,
@@ -99,10 +90,7 @@ TASKS: dict[int, TaskConfig] = {
         id=7,
         name='Particle in a Box',
         description='Plot energy vs quantum number, and probability densities vs displacement in the box',
-        fields=[
-            TaskField(name='box_length_nm', label='Box Length (nm)', type='number', value='1', min='0.1', max='10', step='0.1'),
-            TaskField(name='max_n', label='Maximum Quantum Number', type='number', value='5', min='1', max='12', step='1'),
-        ],
+        fields=[],
     ),
     8: TaskConfig(
         id=8,
@@ -118,10 +106,7 @@ TASKS: dict[int, TaskConfig] = {
         id=9,
         name='Compton Scattering',
         description='Plot fractional wavelength shift, electron recoil speed and electron recoil angle vs photon scattering angle',
-        fields=[
-            TaskField(name='photon_energies', label='Photon Energies (keV)', type='text', value='50, 100, 200, 500, 1000', placeholder='Comma-separated values'),
-            TaskField(name='num_points', label='Angular Resolution', type='number', value='200', min='50', max='1000', step='50'),
-        ],
+        fields=[],
     ),
     10: TaskConfig(
         id=10,
@@ -462,7 +447,7 @@ def task5_plot(max_n: int, min_series: int) -> list[str]:
     ax.set_xlabel('Wavelength (nm)')
     ax.set_ylabel('Photon Energy (eV)')
     ax.set_title('Hydrogen Emission Spectrum')
-    ax.set_xlim(0, 2500)
+    ax.set_xlim(0, 8000)
     ax.set_ylim(0, 14)
     ax.grid(True, alpha=0.2)
     ax.legend(fontsize='small', loc='upper right')
