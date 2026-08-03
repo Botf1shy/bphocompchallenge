@@ -469,7 +469,15 @@ def task6_plot(r_mm: float, d1_nm: float, d2_nm: float, v_min_kv: float, v_max_k
     d_values = [d1_nm * 1e-9, d2_nm * 1e-9]
     d_labels = [f'd\u2081={d1_nm} nm', f'd\u2082={d2_nm} nm']
     colors = ['#4C72B0', '#DD8452']
-    n_orders = 2
+    V_max = v_max_kv * 1000
+    lambda_min = h / math.sqrt(2 * m_ * e_ * V_max)
+
+    # Maximum order allowed by Bragg's law:
+    # n * lambda / (2d) <= 1
+    max_orders = [
+        math.floor(2 * d / lambda_min)
+        for d in d_values
+    ]
 
     voltages_kv = np.linspace(v_min_kv, v_max_kv, 41)
     theta_grid = np.linspace(0, 2 * np.pi, 200)
@@ -483,9 +491,16 @@ def task6_plot(r_mm: float, d1_nm: float, d2_nm: float, v_min_kv: float, v_max_k
         return r_mm * math.sin(phi)
 
     # trace order is fixed across frames: (d_idx, n) pairs
-    trace_specs = [(d, color, label, n)
-                   for d, color, label in zip(d_values, colors, d_labels)
-                   for n in range(1, n_orders + 1)]
+    trace_specs = [
+        (d, color, label, n)
+        for d, color, label, max_order in zip(
+            d_values,
+            colors,
+            d_labels,
+            max_orders,
+        )
+        for n in range(1, max_order + 1)
+    ]
 
     frames = []
     for V_kv in voltages_kv:
