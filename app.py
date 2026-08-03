@@ -11,6 +11,9 @@ matplotlib.use('Agg')
 import matplotlib.animation as manimation
 import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
+import plotly.io as pio
+
 from flask import Flask, render_template, request
 
 from task2 import bounce
@@ -80,11 +83,7 @@ TASKS: dict[int, TaskConfig] = {
         id=6,
         name='Electron diffraction',
         description='Create a computer model of the electron wave rings on a phosphor screen with accelerating voltage V as a variable',
-        fields=[
-            TaskField(name='mass', label='Mass (kg)', type='number', value='0.5', min='0.01', max='10', step='0.01'),
-            TaskField(name='spring_constant', label='Spring Constant (N/m)', type='number', value='20', min='0.1', max='200', step='0.1'),
-            TaskField(name='amplitude', label='Amplitude (m)', type='number', value='0.5', min='0.01', max='2', step='0.01'),
-        ],
+        fields=[],
     ),
     7: TaskConfig(
         id=7,
@@ -462,23 +461,92 @@ def task5_plot(max_n: int, min_series: int) -> list[str]:
 
     return [fig_to_data_uri(fig)]
 
-def task6_plot(mass: float, spring_constant: float, amplitude: float) -> list[str]:
-    omega = math.sqrt(spring_constant / mass)
-    period = 2 * math.pi / omega
-    t = np.linspace(0, 2 * period, 400)
-    x = amplitude * np.cos(omega * t)
-    energy = 0.5 * spring_constant * x**2 + 0.5 * mass * (omega * amplitude * np.sin(omega * t))**2
+def task6_plot(r_mm: float, d1_nm: float, d2_nm: float, v_min_kv: float, v_max_kv: float) -> list[str]:
+    h = 6.626e-34
+    e_ = 1.602e-19
+    m_ = 9.109e-31
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(t, x, label='Position x(t)')
-    ax.plot(t, energy, label='Total energy E(t)')
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Position (m) / Energy (J)')
-    ax.set_title('Simple Harmonic Oscillator')
-    ax.legend()
-    ax.grid(True, alpha=0.4)
-    return [fig_to_data_uri(fig)]
+    d_values = [d1_nm * 1e-9, d2_nm * 1e-9]
+    d_labels = [f'd\u2081={d1_nm} nm', f'd\u2082={d2_nm} nm']
+    colors = ['#4C72B0', '#DD8452']
+    n_orders = 2
 
+    voltages_kv = np.linspace(v_min_kv, v_max_kv, 41)
+    theta_grid = np.linspace(0, 2 * np.pi, 200)
+
+    def ring_radius(V_volts, d, n):
+        lam = h / math.sqrt(2 * m_ * e_ * V_volts)
+        s = n * lam / (2 * d)
+        if s > 1:
+            return None
+        phi = 2 * math.asin(s)
+        return r_mm * math.sin(phi)
+
+    # trace order is fixed across frames: (d_idx, n) pairs
+    trace_specs = [(d, color, label, n)
+                   for d, color, label in zip(d_values, colors, d_labels)
+                   for n in range(1, n_orders + 1)]
+
+    frames = []
+    for V_kv in voltages_kv:
+        V = V_kv * 1000
+        traces = []
+        for d, color, label, n in trace_specs:
+            x = ring_radius(V, d, n)
+            if x is None:
+                xs, ys = [np.nan], [np.nan]
+            else:
+                xs, ys = x * np.cos(theta_grid), x * np.sin(theta_grid)
+            traces.append(go.Scatter(
+                x=xs, y=ys, mode='lines',
+                line=dict(color=color, width=2 if n == 1 else 1,
+                          dash='solid' if n == 1 else 'dot'),
+                name=f'{label}, n={n}',
+            ))
+        frames.append(go.Frame(data=traces, name=f'{V_kv:.2f}'))
+
+    fig1 = go.Figure(
+        data=frames[0].data,
+        frames=frames,
+        layout=go.Layout(
+            title='Electron Diffraction Rings on Phosphor Screen',
+            xaxis=dict(range=[-r_mm, r_mm], scaleanchor='y', title='mm'),
+            yaxis=dict(range=[-r_mm, r_mm], title='mm'),
+            shapes=[dict(type='circle', x0=-r_mm, y0=-r_mm, x1=r_mm, y1=r_mm,
+                         line=dict(color='green'))],
+            sliders=[dict(
+                active=0,
+                currentvalue={'prefix': 'Accelerating Voltage: ', 'suffix': ' kV'},
+                steps=[dict(
+                    method='animate',
+                    args=[[f'{V_kv:.2f}'],
+                          {'mode': 'immediate',
+                           'frame': {'duration': 0, 'redraw': True},
+                           'transition': {'duration': 0}}],
+                    label=f'{V_kv:.1f}',
+                ) for V_kv in voltages_kv],
+            )],
+        ),
+    )
+
+    # Calibration check: sin(phi/2) vs 1/sqrt(V), n=1 line for each spacing
+    V_dense = np.linspace(v_min_kv, v_max_kv, 200) * 1000
+    fig2 = go.Figure()
+    for d, color, label in zip(d_values, colors, d_labels):
+        lam = h / np.sqrt(2 * m_ * e_ * V_dense)
+        sin_half = lam / (2 * d)
+        inv_sqrtV = 1 / np.sqrt(V_dense)
+        fig2.add_trace(go.Scatter(x=inv_sqrtV, y=sin_half, mode='lines',
+                                   name=label, line=dict(color=color)))
+    fig2.update_layout(
+        title='Calibration check: sin(\u03c6/2) vs 1/\u221aV (should be a straight line)',
+        xaxis_title='1/\u221aV  (V in volts)',
+        yaxis_title='sin(\u03c6/2)',
+    )
+
+    html1 = pio.to_html(fig1, include_plotlyjs='cdn', full_html=False)
+    html2 = pio.to_html(fig2, include_plotlyjs=False, full_html=False)
+    return [html1, html2]
 
 def task7_plot(box_length_nm: float, max_n: int) -> list[str]:
     hbar = 1.054571818e-34
@@ -641,9 +709,11 @@ def generate_task_images(task_id: int, form_data: dict[str, Any]) -> list[str]:
         )
     if task_id == 6:
         return task6_plot(
-            float(form_data.get('mass', 0.5)),
-            float(form_data.get('spring_constant', 20.0)),
-            float(form_data.get('amplitude', 0.5)),
+            float(form_data.get('r_mm', 65.0)),
+            float(form_data.get('d1_nm', 0.123)),
+            float(form_data.get('d2_nm', 0.213)),
+            float(form_data.get('v_min_kv', 1.0)),
+            float(form_data.get('v_max_kv', 5.0)),
         )
     if task_id == 7:
         return task7_plot(

@@ -34,8 +34,12 @@
   {% if results %}
   <section class="results">
     <h3>Generated Graphs</h3>
-    {% for image in results %}
-      <img src="{{ image }}" alt="Generated graph for task {{ task.id }}" />
+    {% for result in results %}
+      {% if result.startswith('data:image') %}
+        <img src="{{ result }}" alt="Generated graph for task {{ task.id }}" />
+      {% else %}
+        <p>{{ result | safe }}</p>
+      {% endif %}
     {% endfor %}
   </section>
   {% endif %}
