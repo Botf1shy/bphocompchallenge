@@ -415,44 +415,52 @@ def task5_plot(max_n: int, min_series: int) -> list[str]:
     c = 3.0e8
     e = 1.602e-19
     E0 = 13.6
-    max_n = max(3, min(max_n, 50))
-    min_series = max(1, min(min_series, 5))
 
     def photon_energy(n_i, n_f):
         return E0 * (1 / n_f**2 - 1 / n_i**2)
 
     def photon_wavelength(n_i, n_f):
         E_eV = photon_energy(n_i, n_f)
-        return (h * c / (E_eV * e)) * 1e9
+        E_J = E_eV * e
+        return h * c / E_J * 1e9
 
-    series_names = {
-        1: ('Lyman', 'UV', 'violet'),
-        2: ('Balmer', 'Visible', 'dodgerblue'),
-        3: ('Paschen', 'IR', 'green'),
-        4: ('Brackett', 'IR', 'orange'),
-        5: ('Pfund', 'IR', 'red'),
+    series = {
+        'Lyman (n_f=1)':    {'n_f': 1, 'color': 'violet',     'region': 'UV'},
+        'Balmer (n_f=2)':   {'n_f': 2, 'color': 'dodgerblue', 'region': 'Visible'},
+        'Paschen (n_f=3)':  {'n_f': 3, 'color': 'green',      'region': 'IR'},
+        'Brackett (n_f=4)': {'n_f': 4, 'color': 'orange',     'region': 'IR'},
+        'Pfund (n_f=5)':    {'n_f': 5, 'color': 'red',        'region': 'IR'},
     }
 
-    fig, ax = plt.subplots(figsize=(9, 6))
-    for n_f in range(min_series, min(min_series + 4, 6)):
-        name, region, color = series_names.get(n_f, (f'n_f={n_f}', 'Unknown', 'black'))
-        n_i = np.arange(n_f + 1, max_n + 1)
-        wavelengths = [photon_wavelength(int(n), n_f) for n in n_i]
-        energies = [photon_energy(int(n), n_f) for n in n_i]
-        ax.scatter(wavelengths, energies, label=f'{name} ({region})', color=color, s=40)
-        for wl, en in zip(wavelengths, energies):
-            ax.vlines(wl, 0, en, color=color, alpha=0.3, linewidth=0.8)
+    n_max = 20
 
-    ax.axvspan(400, 700, alpha=0.1, color='gold', label='Visible range')
-    ax.set_xlabel('Wavelength (nm)')
-    ax.set_ylabel('Photon Energy (eV)')
-    ax.set_title('Hydrogen Emission Spectrum')
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    for name, info in series.items():
+        n_f = info['n_f']
+        n_i_values = np.arange(n_f + 1, n_max + 1)
+
+        energies = [photon_energy(ni, n_f) for ni in n_i_values]
+        wavelengths = [photon_wavelength(ni, n_f) for ni in n_i_values]
+
+        ax.scatter(wavelengths, energies, label=f'{name}  ({info["region"]})',
+                   color=info['color'], s=30, zorder=3)
+
+        for wl, en in zip(wavelengths, energies):
+            ax.vlines(wl, 0, en, color=info['color'], alpha=0.3, linewidth=0.8)
+
+    ax.axvspan(400, 700, alpha=0.1, color='gold', label='Visible (400–700 nm)')
+
+    ax.set_xlabel('Wavelength  λ  (nm)')
+    ax.set_ylabel('Photon Energy  (eV)')
+    ax.set_title('Hydrogen Emission Spectrum — Bohr Model')
+    ax.legend(loc='upper right')
     ax.set_xlim(0, 8000)
     ax.set_ylim(0, 14)
     ax.grid(True, alpha=0.2)
-    ax.legend(fontsize='small', loc='upper right')
-    return [fig_to_data_uri(fig)]
+    plt.tight_layout()
 
+    return [fig_to_data_uri(fig)]
 
 def task6_plot(mass: float, spring_constant: float, amplitude: float) -> list[str]:
     omega = math.sqrt(spring_constant / mass)
