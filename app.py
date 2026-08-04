@@ -95,11 +95,7 @@ TASKS: dict[int, TaskConfig] = {
         id=8,
         name='Quantum cryptography',
         description='Create a visual calculator of the classical and quantum mismatch probabilities for the detection of polarized entangled photons',
-        fields=[
-            TaskField(name='wavelength_nm', label='Wavelength (nm)', type='number', value='550', min='100', max='800', step='10'),
-            TaskField(name='slit_separation_um', label='Slit Separation (μm)', type='number', value='0.5', min='0.01', max='5', step='0.01'),
-            TaskField(name='screen_distance_m', label='Screen Distance (m)', type='number', value='1', min='0.1', max='5', step='0.1'),
-        ],
+        fields=[],
     ),
     9: TaskConfig(
         id=9,
@@ -717,25 +713,6 @@ def task7_plot(box_length_nm: float, max_n: int) -> list[str]:
     return [fig_to_data_uri(fig1), fig_to_data_uri(fig2)]
 
 
-def task8_plot(wavelength_nm: float, slit_separation_um: float, screen_distance_m: float) -> list[str]:
-    wavelength = wavelength_nm * 1e-9
-    d = slit_separation_um * 1e-6
-    D = screen_distance_m
-    x = np.linspace(-0.02, 0.02, 1200)
-    theta = np.arctan2(x, D)
-    slit_width = max(1e-7, d * 0.2)
-    beta = np.pi * slit_width * np.sin(theta) / wavelength
-    gamma = np.pi * d * np.sin(theta) / wavelength
-    envelope = np.sinc(beta / np.pi) ** 2
-    intensity = envelope * np.cos(gamma) ** 2
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(x * 1000, intensity, color='purple')
-    ax.set_xlabel('Screen position (mm)')
-    ax.set_ylabel('Intensity (arb. units)')
-    ax.set_title('Double-Slit Interference Pattern')
-    ax.grid(True, alpha=0.3)
-    return [fig_to_data_uri(fig)]
 
 
 def task9_plot(photon_energies: str, num_points: int) -> list[str]:
@@ -854,12 +831,6 @@ def generate_task_images(task_id: int, form_data: dict[str, Any]) -> list[str]:
             float(form_data.get('box_length_nm', 1.0)),
             int(form_data.get('max_n', 5)),
         )
-    if task_id == 8:
-        return task8_plot(
-            float(form_data.get('wavelength_nm', 550.0)),
-            float(form_data.get('slit_separation_um', 0.5)),
-            float(form_data.get('screen_distance_m', 1.0)),
-        )
     if task_id == 9:
         return task9_plot(
             form_data.get('photon_energies', '50, 100, 200, 500, 1000'),
@@ -882,15 +853,26 @@ def index():
 @app.route('/task/<int:task_id>', methods=['GET', 'POST'])
 def task_page(task_id: int):
     task = TASKS.get(task_id)
+
     if task is None:
         return f'Task {task_id} does not exist.', 404
 
+    # Task 8 is fully interactive in the browser,
+    # so it does not need a form submission.
+    if task_id == 8:
+        return render_template('task8.html', task=task)
+
     results = None
+
     if request.method == 'POST':
         results = generate_task_images(task_id, request.form)
 
-    return render_template('task.html', task=task, results=results, form=request.form)
-
+    return render_template(
+        'task.html',
+        task=task,
+        results=results,
+        form=request.form,
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

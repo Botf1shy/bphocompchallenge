@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ task.name }}</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 30px;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #20252b;
+        }
+
+        .calculator {
+            max-width: 1050px;
+            margin: auto;
+            padding: 30px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        h1 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        .description {
+            text-align: center;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #315f9e;
+            text-decoration: none;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .slider-card {
+            padding: 20px;
+            background: #f7f9fb;
+            border-radius: 12px;
+        }
+
+        .slider-card label {
+            display: block;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .angle-value {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .diagram-card {
+            margin-bottom: 30px;
+            padding: 18px;
+            background: #fcfcfc;
+            border: 1px solid #d9dde3;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+
+        #detectorDiagram {
+            display: block;
+            width: 100%;
+            min-width: 700px;
+            height: auto;
+        }
+
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .result-card {
+            padding: 24px;
+            text-align: center;
+            border-radius: 12px;
+        }
+
+        .classical {
+            background: #eaf2ff;
+            border: 2px solid #3974c6;
+        }
+
+        .quantum {
+            background: #eaf9ef;
+            border: 2px solid #2b9348;
+        }
+
+        .formula {
+            font-family: "Times New Roman", serif;
+            font-size: 1.15rem;
+        }
+
+        .probability {
+            margin: 14px 0;
+            font-size: 2.3rem;
+            font-weight: bold;
+        }
+
+        .comparison {
+            margin-top: 25px;
+            padding: 18px;
+            text-align: center;
+            background: #fff4d6;
+            border-radius: 10px;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 700px) {
+            .controls,
+            .results {
+                grid-template-columns: 1fr;
+            }
+
+            body {
+                padding: 12px;
+            }
+
+            .calculator {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="calculator">
+    <a class="back-link" href="/">← Back to tasks</a>
+
+    <h1>{{ task.name }}</h1>
+
+    <p class="description">
+        Move the sliders to change the detector angles and compare
+        the classical and quantum mismatch probabilities.
+    </p>
+
+    <div class="controls">
+        <div class="slider-card">
+            <label for="thetaSlider">
+                Detector A angle, θ
+            </label>
+
+            <input
+                id="thetaSlider"
+                type="range"
+                min="-90"
+                max="90"
+                step="1"
+                value="-30"
+            >
+
+            <div id="thetaValue" class="angle-value">
+                −30°
+            </div>
+        </div>
+
+        <div class="slider-card">
+            <label for="phiSlider">
+                Detector B angle, φ
+            </label>
+
+            <input
+                id="phiSlider"
+                type="range"
+                min="-90"
+                max="90"
+                step="1"
+                value="30"
+            >
+
+            <div id="phiValue" class="angle-value">
+                30°
+            </div>
+        </div>
+    </div>
+
+    <div class="diagram-card">
+        <svg id="detectorDiagram" viewBox="0 0 900 360">
+            <!-- Photon source -->
+            <circle
+                cx="450"
+                cy="180"
+                r="22"
+                fill="#e53935"
+            ></circle>
+
+            <line
+                x1="425"
+                y1="180"
+                x2="265"
+                y2="180"
+                stroke="#e53935"
+                stroke-width="5"
+            ></line>
+
+            <polygon
+                points="250,180 270,169 270,191"
+                fill="#e53935"
+            ></polygon>
+
+            <line
+                x1="475"
+                y1="180"
+                x2="635"
+                y2="180"
+                stroke="#e53935"
+                stroke-width="5"
+            ></line>
+
+            <polygon
+                points="650,180 630,169 630,191"
+                fill="#e53935"
+            ></polygon>
+
+            <line
+                x1="450"
+                y1="155"
+                x2="450"
+                y2="85"
+                stroke="#e53935"
+                stroke-width="5"
+            ></line>
+
+            <polygon
+                points="450,70 439,90 461,90"
+                fill="#e53935"
+            ></polygon>
+
+            <line
+                x1="450"
+                y1="205"
+                x2="450"
+                y2="275"
+                stroke="#e53935"
+                stroke-width="5"
+            ></line>
+
+            <polygon
+                points="450,290 439,270 461,270"
+                fill="#e53935"
+            ></polygon>
+
+            <text
+                x="450"
+                y="325"
+                text-anchor="middle"
+                font-size="18"
+                font-weight="bold"
+            >
+                Entangled photon source
+            </text>
+
+            <!-- Detector A -->
+            <text
+                x="180"
+                y="40"
+                text-anchor="middle"
+                font-size="24"
+                font-weight="bold"
+            >
+                Detector A
+            </text>
+
+            <line
+                x1="180"
+                y1="250"
+                x2="180"
+                y2="80"
+                stroke="#777"
+                stroke-width="2"
+                stroke-dasharray="8 8"
+            ></line>
+
+            <g id="detectorAGroup">
+                <line
+                    x1="180"
+                    y1="250"
+                    x2="180"
+                    y2="105"
+                    stroke="#20a356"
+                    stroke-width="7"
+                    stroke-linecap="round"
+                ></line>
+
+                <polygon
+                    points="180,87 168,112 192,112"
+                    fill="#20a356"
+                ></polygon>
+
+                <line
+                    x1="180"
+                    y1="250"
+                    x2="180"
+                    y2="335"
+                    stroke="#20a356"
+                    stroke-width="7"
+                    stroke-linecap="round"
+                ></line>
+
+                <polygon
+                    points="180,350 168,326 192,326"
+                    fill="#20a356"
+                ></polygon>
+            </g>
+
+            <circle
+                cx="180"
+                cy="250"
+                r="7"
+                fill="#222"
+            ></circle>
+
+            <text
+                id="thetaDiagramText"
+                x="180"
+                y="285"
+                text-anchor="middle"
+                font-size="20"
+            >
+                θ = −30°
+            </text>
+
+            <!-- Detector B -->
+            <text
+                x="720"
+                y="40"
+                text-anchor="middle"
+                font-size="24"
+                font-weight="bold"
+            >
+                Detector B
+            </text>
+
+            <line
+                x1="720"
+                y1="250"
+                x2="720"
+                y2="80"
+                stroke="#777"
+                stroke-width="2"
+                stroke-dasharray="8 8"
+            ></line>
+
+            <g id="detectorBGroup">
+                <line
+                    x1="720"
+                    y1="250"
+                    x2="720"
+                    y2="105"
+                    stroke="#3974c6"
+                    stroke-width="7"
+                    stroke-linecap="round"
+                ></line>
+
+                <polygon
+                    points="720,87 708,112 732,112"
+                    fill="#3974c6"
+                ></polygon>
+
+                <line
+                    x1="720"
+                    y1="250"
+                    x2="720"
+                    y2="335"
+                    stroke="#3974c6"
+                    stroke-width="7"
+                    stroke-linecap="round"
+                ></line>
+
+                <polygon
+                    points="720,350 708,326 732,326"
+                    fill="#3974c6"
+                ></polygon>
+            </g>
+
+            <circle
+                cx="720"
+                cy="250"
+                r="7"
+                fill="#222"
+            ></circle>
+
+            <text
+                id="phiDiagramText"
+                x="720"
+                y="285"
+                text-anchor="middle"
+                font-size="20"
+            >
+                φ = 30°
+            </text>
+        </svg>
+    </div>
+
+    <div class="results">
+        <div class="result-card classical">
+            <h2>Classical prediction</h2>
+
+            <div class="formula">
+                P = 1 − cos²θ cos²φ − sin²θ sin²φ
+            </div>
+
+            <div id="classicalProbability" class="probability">
+                0.3750
+            </div>
+
+            <div id="classicalPercentage">
+                37.50%
+            </div>
+        </div>
+
+        <div class="result-card quantum">
+            <h2>Quantum prediction</h2>
+
+            <div class="formula">
+                P = sin²(φ − θ)
+            </div>
+
+            <div id="quantumProbability" class="probability">
+                0.7500
+            </div>
+
+            <div id="quantumPercentage">
+                75.00%
+            </div>
+        </div>
+    </div>
+
+    <div id="comparison" class="comparison">
+        Quantum mechanics predicts a greater mismatch probability.
+    </div>
+</div>
+
+<script>
+    const thetaSlider =
+        document.getElementById("thetaSlider");
+
+    const phiSlider =
+        document.getElementById("phiSlider");
+
+    const thetaValue =
+        document.getElementById("thetaValue");
+
+    const phiValue =
+        document.getElementById("phiValue");
+
+    const classicalProbability =
+        document.getElementById("classicalProbability");
+
+    const quantumProbability =
+        document.getElementById("quantumProbability");
+
+    const classicalPercentage =
+        document.getElementById("classicalPercentage");
+
+    const quantumPercentage =
+        document.getElementById("quantumPercentage");
+
+    const comparison =
+        document.getElementById("comparison");
+
+    const detectorAGroup =
+        document.getElementById("detectorAGroup");
+
+    const detectorBGroup =
+        document.getElementById("detectorBGroup");
+
+    const thetaDiagramText =
+        document.getElementById("thetaDiagramText");
+
+    const phiDiagramText =
+        document.getElementById("phiDiagramText");
+
+
+    function degreesToRadians(angle) {
+        return angle * Math.PI / 180;
+    }
+
+
+    function formatAngle(angle) {
+        if (angle < 0) {
+            return `−${Math.abs(angle)}°`;
+        }
+
+        return `${angle}°`;
+    }
+
+
+    function clampProbability(value) {
+        return Math.max(0, Math.min(1, value));
+    }
+
+
+    function updateCalculator() {
+        const thetaDegrees =
+            Number(thetaSlider.value);
+
+        const phiDegrees =
+            Number(phiSlider.value);
+
+        const theta =
+            degreesToRadians(thetaDegrees);
+
+        const phi =
+            degreesToRadians(phiDegrees);
+
+        let classical =
+            1
+            - Math.cos(theta) ** 2
+              * Math.cos(phi) ** 2
+            - Math.sin(theta) ** 2
+              * Math.sin(phi) ** 2;
+
+        let quantum =
+            Math.sin(phi - theta) ** 2;
+
+        classical = clampProbability(classical);
+        quantum = clampProbability(quantum);
+
+        thetaValue.textContent =
+            formatAngle(thetaDegrees);
+
+        phiValue.textContent =
+            formatAngle(phiDegrees);
+
+        thetaDiagramText.textContent =
+            `θ = ${formatAngle(thetaDegrees)}`;
+
+        phiDiagramText.textContent =
+            `φ = ${formatAngle(phiDegrees)}`;
+
+        /*
+        Positive SVG rotation is clockwise.
+        Using the negative angle gives the usual
+        mathematical angle convention.
+        */
+        detectorAGroup.setAttribute(
+            "transform",
+            `rotate(${-thetaDegrees} 180 250)`
+        );
+
+        detectorBGroup.setAttribute(
+            "transform",
+            `rotate(${-phiDegrees} 720 250)`
+        );
+
+        classicalProbability.textContent =
+            classical.toFixed(4);
+
+        quantumProbability.textContent =
+            quantum.toFixed(4);
+
+        classicalPercentage.textContent =
+            `${(classical * 100).toFixed(2)}%`;
+
+        quantumPercentage.textContent =
+            `${(quantum * 100).toFixed(2)}%`;
+
+        const difference =
+            quantum - classical;
+
+        if (Math.abs(difference) < 0.00005) {
+            comparison.textContent =
+                "Both models give the same mismatch probability.";
+        } else if (difference > 0) {
+            comparison.textContent =
+                `Quantum mechanics predicts a mismatch probability ` +
+                `${difference.toFixed(4)} greater than the ` +
+                `classical model.`;
+        } else {
+            comparison.textContent =
+                `The classical model predicts a mismatch probability ` +
+                `${Math.abs(difference).toFixed(4)} greater than the ` +
+                `quantum model.`;
+        }
+    }
+
+
+    thetaSlider.addEventListener(
+        "input",
+        updateCalculator
+    );
+
+    phiSlider.addEventListener(
+        "input",
+        updateCalculator
+    );
+
+    updateCalculator();
+</script>
+</body>
+</html>
