@@ -17,6 +17,8 @@ import plotly.io as pio
 from flask import Flask, render_template, request
 
 from task2 import bounce
+from scipy.constants import physical_constants, electron_mass, atomic_mass
+from scipy.special import eval_genlaguerre, sph_harm_y
 
 app = Flask(__name__)
 
@@ -108,9 +110,13 @@ TASKS: dict[int, TaskConfig] = {
         name='Hydrogenic orbitals',
         description='Plot 2D slices and 3D visualizatioins of the probability density for an electron in a hydrogenic atom',
         fields=[
-            TaskField(name='initial_amount', label='Initial Amount (atoms)', type='number', value='1e6', min='1', max='1e9', step='1000'),
-            TaskField(name='half_life', label='Half-Life (s)', type='number', value='30', min='1', max='1000', step='1'),
-            TaskField(name='duration', label='Duration (s)', type='number', value='150', min='10', max='1000', step='10'),
+            TaskField(name='z', label='Proton Number Z', type='number', value='1', min='1', max='20', step='1'),
+            TaskField(name='mass_number', label='Mass Number A', type='number', value='1', min='1', max='40', step='1'),
+            TaskField(name='n', label='Principal Quantum Number n', type='number', value='3', min='1', max='6', step='1'),
+            TaskField(name='l', label='Angular Quantum Number l', type='number', value='2', min='0', max='5', step='1'),
+            TaskField(name='m', label='Magnetic Quantum Number m', type='number', value='0', min='-5', max='5', step='1'),
+            TaskField(name='extent', label='Plot Extent (Å)', type='number', value='12', min='2', max='40', step='1'),
+            TaskField(name='threshold', label='3D Density Threshold', type='number', value='0.15', min='0.01', max='0.9', step='0.01'),
         ],
     ),
 }
@@ -771,23 +777,193 @@ def task9_plot(photon_energies: str, num_points: int) -> list[str]:
     return [fig_to_data_uri(fig)]
 
 
-def task10_plot(initial_amount: float, half_life: float, duration: float) -> list[str]:
-    t = np.linspace(0, duration, 500)
-    half_life = max(1e-6, half_life)
-    N0 = max(1.0, initial_amount)
-    decay_constant = math.log(2) / half_life
-    N = N0 * np.exp(-decay_constant * t)
-    activity = decay_constant * N
+def task10_plot(
+    z: int,
+    mass_number: int,
+    n: int,
+    l: int,
+    m: int,
+    extent_angstrom: float,
+    threshold: float,
+) -> list[str]:
+    """Plot radial, 2D-slice and 3D probability density for a hydrogenic orbital."""
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(t, N, label='Remaining atoms')
-    ax.plot(t, activity, label='Activity', linestyle='--')
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Atoms / Activity (s⁻¹)')
-    ax.set_title('Radioactive Decay')
-    ax.grid(True, alpha=0.3)
-    ax.legend()
-    return [fig_to_data_uri(fig)]
+    if n < 1:
+        raise ValueError('n must be at least 1.')
+    if l < 0 or l >= n:
+        raise ValueError('l must satisfy 0 ≤ l ≤ n - 1.')
+    if abs(m) > l:
+        raise ValueError('m must satisfy -l ≤ m ≤ l.')
+    if z < 1:
+        raise ValueError('Z must be at least 1.')
+    if mass_number < z:
+        raise ValueError('A must be greater than or equal to Z.')
+
+    bohr_radius_angstrom = physical_constants['Bohr radius'][0] / 1e-10
+    nuclear_mass = mass_number * atomic_mass
+    reduced_mass = electron_mass * nuclear_mass / (electron_mass + nuclear_mass)
+    a = electron_mass * bohr_radius_angstrom / (reduced_mass * z)
+
+    def radial_wavefunction(r: np.ndarray) -> np.ndarray:
+        x = 2.0 * r / (a * n)
+        order = n - l - 1
+        laguerre = eval_genlaguerre(order, 2 * l + 1, x)
+        normalisation = np.sqrt(
+            math.factorial(order) / (2.0 * n * math.factorial(n + l))
+        ) * (2.0 / (a * n)) ** 1.5
+        return normalisation * np.exp(-x / 2.0) * x**l * laguerre
+
+    def real_spherical_harmonic(
+        theta: np.ndarray,
+        phi: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Return a real spherical harmonic.
+
+        theta:
+            Polar angle measured from the positive z-axis.
+
+        phi:
+            Azimuthal angle in the x-y plane.
+
+        l and m are taken automatically from task10_plot().
+        """
+
+        if m == 0:
+            return np.real(
+                sph_harm_y(l, 0, theta, phi)
+            )
+
+        if m > 0:
+            harmonic = sph_harm_y(
+                l,
+                m,
+                theta,
+                phi,
+            )
+
+            return (
+                np.sqrt(2.0)
+                * ((-1) ** m)
+                * np.real(harmonic)
+            )
+
+        positive_m = abs(m)
+
+        harmonic = sph_harm_y(
+            l,
+            positive_m,
+            theta,
+            phi,
+        )
+
+        return (
+            np.sqrt(2.0)
+            * ((-1) ** positive_m)
+            * np.imag(harmonic)
+        )
+
+    orbital_letters = 'SPDFGH'
+    orbital_name = f'{n}{orbital_letters[l] if l < len(orbital_letters) else f"(l={l})"}'
+
+    # Radial probability density: r² |R(r)|²
+    r = np.linspace(0.0, max(extent_angstrom, 1.0), 1400)
+    R = radial_wavefunction(r)
+    radial_probability = r**2 * np.abs(R)**2
+
+    fig_radial = go.Figure()
+    fig_radial.add_trace(go.Scatter(
+        x=r,
+        y=radial_probability,
+        mode='lines',
+        name=r'$r^2|R_{nl}(r)|^2$',
+        line=dict(width=3),
+        hovertemplate='r = %{x:.3f} Å<br>radial density = %{y:.4g}<extra></extra>',
+    ))
+    fig_radial.update_layout(
+        title=f'Radial probability density: Z={z}, A={mass_number}, {orbital_name}, m={m}',
+        xaxis_title='Radius r / Å',
+        yaxis_title='Radial probability density',
+        template='plotly_white',
+    )
+
+    # 2D x-z slice through y = 0
+    points_2d = 260
+    axis_2d = np.linspace(-extent_angstrom, extent_angstrom, points_2d)
+    X, Z_grid = np.meshgrid(axis_2d, axis_2d)
+    Y = np.zeros_like(X)
+    radius = np.sqrt(X**2 + Y**2 + Z_grid**2)
+    theta = np.zeros_like(radius)
+    nonzero = radius > 0
+    theta[nonzero] = np.arccos(np.clip(Z_grid[nonzero] / radius[nonzero], -1.0, 1.0))
+    phi = np.arctan2(Y, X)
+    psi = radial_wavefunction(radius) * real_spherical_harmonic(theta, phi)
+    density_2d = np.abs(psi)**2
+    if density_2d.max() > 0:
+        density_2d /= density_2d.max()
+
+    fig_slice = go.Figure(go.Heatmap(
+        x=axis_2d,
+        y=axis_2d,
+        z=density_2d,
+        colorscale='Viridis',
+        colorbar=dict(title='Relative |ψ|²'),
+        hovertemplate='x = %{x:.2f} Å<br>z = %{y:.2f} Å<br>|ψ|² = %{z:.4f}<extra></extra>',
+    ))
+    fig_slice.update_layout(
+        title=f'Probability-density slice in the x-z plane: {orbital_name}, m={m}',
+        xaxis_title='x / Å',
+        yaxis_title='z / Å',
+        yaxis=dict(scaleanchor='x', scaleratio=1),
+        template='plotly_white',
+    )
+
+    # 3D transparent volume, following the coloured-glass idea in the task.
+    points_3d = 42
+    axis_3d = np.linspace(-extent_angstrom, extent_angstrom, points_3d)
+    X3, Y3, Z3 = np.meshgrid(axis_3d, axis_3d, axis_3d, indexing='ij')
+    radius3 = np.sqrt(X3**2 + Y3**2 + Z3**2)
+    theta3 = np.zeros_like(radius3)
+    nonzero3 = radius3 > 0
+    theta3[nonzero3] = np.arccos(np.clip(Z3[nonzero3] / radius3[nonzero3], -1.0, 1.0))
+    phi3 = np.arctan2(Y3, X3)
+    psi3 = radial_wavefunction(radius3) * real_spherical_harmonic(theta3, phi3)
+    density3 = np.abs(psi3)**2
+    max_density = float(density3.max())
+    if max_density > 0:
+        density3 /= max_density
+
+    threshold = float(np.clip(threshold, 0.001, 0.95))
+    fig_3d = go.Figure(go.Volume(
+        x=X3.ravel(),
+        y=Y3.ravel(),
+        z=Z3.ravel(),
+        value=density3.ravel(),
+        isomin=threshold,
+        isomax=1.0,
+        opacity=0.12,
+        surface_count=14,
+        colorscale='Viridis',
+        caps=dict(x_show=False, y_show=False, z_show=False),
+        colorbar=dict(title='Relative |ψ|²'),
+        hovertemplate='x=%{x:.2f} Å<br>y=%{y:.2f} Å<br>z=%{z:.2f} Å<br>|ψ|²=%{value:.3f}<extra></extra>',
+    ))
+    fig_3d.update_layout(
+        title=f'3D hydrogenic orbital density: Z={z}, A={mass_number}, {orbital_name}, m={m}',
+        scene=dict(
+            xaxis_title='x / Å',
+            yaxis_title='y / Å',
+            zaxis_title='z / Å',
+            aspectmode='cube',
+        ),
+        template='plotly_white',
+        margin=dict(l=0, r=0, b=0, t=55),
+    )
+
+    html_radial = pio.to_html(fig_radial, include_plotlyjs='cdn', full_html=False)
+    html_slice = pio.to_html(fig_slice, include_plotlyjs=False, full_html=False)
+    html_3d = pio.to_html(fig_3d, include_plotlyjs=False, full_html=False)
+    return [html_radial, html_slice, html_3d]
 
 
 def generate_task_images(task_id: int, form_data: dict[str, Any]) -> list[str]:
@@ -838,9 +1014,13 @@ def generate_task_images(task_id: int, form_data: dict[str, Any]) -> list[str]:
         )
     if task_id == 10:
         return task10_plot(
-            float(form_data.get('initial_amount', 1e6)),
-            float(form_data.get('half_life', 30.0)),
-            float(form_data.get('duration', 150.0)),
+            int(form_data.get('z', 1)),
+            int(form_data.get('mass_number', 1)),
+            int(form_data.get('n', 3)),
+            int(form_data.get('l', 2)),
+            int(form_data.get('m', 0)),
+            float(form_data.get('extent', 12.0)),
+            float(form_data.get('threshold', 0.15)),
         )
     raise ValueError(f'Unknown task {task_id}')
 
