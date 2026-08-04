@@ -462,6 +462,34 @@ def task5_plot(max_n: int, min_series: int) -> list[str]:
     return [fig_to_data_uri(fig)]
 
 def task6_plot(r_mm: float, d1_nm: float, d2_nm: float, v_min_kv: float, v_max_kv: float) -> list[str]:
+
+    def hex_to_rgba(hex_color: str, opacity: float) -> str:
+        """Convert a hex colour such as #4C72B0 into Plotly rgba format."""
+        hex_color = hex_color.lstrip('#')
+
+        red = int(hex_color[0:2], 16)
+        green = int(hex_color[2:4], 16)
+        blue = int(hex_color[4:6], 16)
+
+        return f'rgba({red}, {green}, {blue}, {opacity})'
+
+
+    def ring_style(base_color: str, n: int, max_order: int) -> dict:
+        """Make higher-order rings thinner and more transparent."""
+        if max_order <= 1:
+            relative_order = 0
+        else:
+            relative_order = (n - 1) / (max_order - 1)
+
+        # First rings are strong; higher orders gradually fade.
+        opacity = max(0.12, 0.9 - 0.75 * relative_order)
+        width = max(0.5, 2.6 - 1.8 * relative_order)
+
+        return {
+            'color': hex_to_rgba(base_color, opacity),
+            'width': width,
+        }
+
     h = 6.626e-34
     e_ = 1.602e-19
     m_ = 9.109e-31
@@ -492,7 +520,7 @@ def task6_plot(r_mm: float, d1_nm: float, d2_nm: float, v_min_kv: float, v_max_k
 
     # trace order is fixed across frames: (d_idx, n) pairs
     trace_specs = [
-        (d, color, label, n)
+        (d, color, label, n, max_order)
         for d, color, label, max_order in zip(
             d_values,
             colors,
@@ -503,43 +531,134 @@ def task6_plot(r_mm: float, d1_nm: float, d2_nm: float, v_min_kv: float, v_max_k
     ]
 
     frames = []
+
     for V_kv in voltages_kv:
         V = V_kv * 1000
         traces = []
-        for d, color, label, n in trace_specs:
-            x = ring_radius(V, d, n)
-            if x is None:
+
+        for d, color, label, n, max_order in trace_specs:
+            radius = ring_radius(V, d, n)
+
+            if radius is None:
                 xs, ys = [np.nan], [np.nan]
             else:
-                xs, ys = x * np.cos(theta_grid), x * np.sin(theta_grid)
+                xs = radius * np.cos(theta_grid)
+                ys = radius * np.sin(theta_grid)
+
+            style = ring_style(color, n, max_order)
+
             traces.append(go.Scatter(
-                x=xs, y=ys, mode='lines',
-                line=dict(color=color, width=2 if n == 1 else 1,
-                          dash='solid' if n == 1 else 'dot'),
-                name=f'{label}, n={n}',
+                x=xs,
+                y=ys,
+                mode='lines',
+
+                line=dict(
+                    color=style['color'],
+                    width=style['width'],
+                ),
+
+                # Keeps all orders for one spacing together.
+                legendgroup=label,
+                legendgrouptitle_text=label if n == 1 else None,
+
+                # Do not fill the legend with every order.
+                showlegend=n == 1,
+                name=label,
+
+                # Order is still shown when hovering.
+                customdata=np.full(len(xs), n),
+                hovertemplate=(
+                    f'{label}<br>'
+                    'Order: n=%{customdata}<br>'
+                    'x: %{x:.2f} mm<br>'
+                    'y: %{y:.2f} mm'
+                    '<extra></extra>'
+                ),
             ))
-        frames.append(go.Frame(data=traces, name=f'{V_kv:.2f}'))
+
+        frames.append(
+            go.Frame(
+                data=traces,
+                name=f'{V_kv:.2f}',
+            )
+        )
 
     fig1 = go.Figure(
         data=frames[0].data,
         frames=frames,
         layout=go.Layout(
             title='Electron Diffraction Rings on Phosphor Screen',
-            xaxis=dict(range=[-r_mm, r_mm], scaleanchor='y', title='mm'),
-            yaxis=dict(range=[-r_mm, r_mm], title='mm'),
-            shapes=[dict(type='circle', x0=-r_mm, y0=-r_mm, x1=r_mm, y1=r_mm,
-                         line=dict(color='green'))],
+
+            template='plotly_white',
+
+            xaxis=dict(
+                range=[-r_mm, r_mm],
+                scaleanchor='y',
+                scaleratio=1,
+                title='Horizontal position / mm',
+                showgrid=True,
+                gridcolor='rgba(0, 0, 0, 0.08)',
+                zeroline=True,
+                zerolinecolor='rgba(0, 0, 0, 0.25)',
+            ),
+
+            yaxis=dict(
+                range=[-r_mm, r_mm],
+                title='Vertical position / mm',
+                showgrid=True,
+                gridcolor='rgba(0, 0, 0, 0.08)',
+                zeroline=True,
+                zerolinecolor='rgba(0, 0, 0, 0.25)',
+            ),
+
+            shapes=[
+                dict(
+                    type='circle',
+                    x0=-r_mm,
+                    y0=-r_mm,
+                    x1=r_mm,
+                    y1=r_mm,
+                    line=dict(
+                        color='rgba(0, 100, 0, 0.55)',
+                        width=2,
+                    ),
+                )
+            ],
+
+            legend=dict(
+                title='Lattice spacings',
+                groupclick='togglegroup',
+                bgcolor='rgba(255, 255, 255, 0.8)',
+            ),
+
+            hovermode='closest',
+
             sliders=[dict(
                 active=0,
-                currentvalue={'prefix': 'Accelerating Voltage: ', 'suffix': ' kV'},
-                steps=[dict(
-                    method='animate',
-                    args=[[f'{V_kv:.2f}'],
-                          {'mode': 'immediate',
-                           'frame': {'duration': 0, 'redraw': True},
-                           'transition': {'duration': 0}}],
-                    label=f'{V_kv:.1f}',
-                ) for V_kv in voltages_kv],
+                currentvalue={
+                    'prefix': 'Accelerating voltage: ',
+                    'suffix': ' kV',
+                },
+                steps=[
+                    dict(
+                        method='animate',
+                        args=[
+                            [f'{V_kv:.2f}'],
+                            {
+                                'mode': 'immediate',
+                                'frame': {
+                                    'duration': 0,
+                                    'redraw': True,
+                                },
+                                'transition': {
+                                    'duration': 0,
+                                },
+                            },
+                        ],
+                        label=f'{V_kv:.1f}',
+                    )
+                    for V_kv in voltages_kv
+                ],
             )],
         ),
     )
