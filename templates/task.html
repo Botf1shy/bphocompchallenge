@@ -6,14 +6,20 @@
 <section>
   <h2>{{ task.id }}. {{ task.name }}</h2>
   <p>{{ task.description }}</p>
+
   {% if task.notes %}
   <div class="note">{{ task.notes }}</div>
   {% endif %}
+
   <form method="post">
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+    <div
+      class="grid"
+      style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));"
+    >
       {% for field in task.fields %}
       <div class="form-row">
         <label for="{{ field.name }}">{{ field.label }}</label>
+
         <input
           id="{{ field.name }}"
           name="{{ field.name }}"
@@ -27,20 +33,45 @@
       </div>
       {% endfor %}
     </div>
+
     <p>
       <button type="submit">Generate Graph</button>
     </p>
   </form>
+
   {% if results %}
   <section class="results">
     <h3>Generated Graphs</h3>
+
     {% for result in results %}
       {% if result.startswith('data:image') %}
-        <img src="{{ result }}" alt="Generated graph for task {{ task.id }}" />
+        <img
+          src="{{ result }}"
+          alt="Generated graph for task {{ task.id }}"
+        />
       {% else %}
-        <p>{{ result | safe }}</p>
+        <div class="interactive-graph">
+          {{ result | safe }}
+        </div>
       {% endif %}
     {% endfor %}
+
+    {% if task.id == 7 %}
+    <section class="task7-proofs">
+      <h3>Showing a particle in a box obeys Heisenberg's uncertainty principle</h3>
+
+      {% for image_number in range(1, 7) %}
+        <img
+          src="{{ url_for(
+            'static',
+            filename='images/task7proof-' ~ image_number ~ '.png'
+          ) }}"
+          alt="Particle in a box derivation, part {{ image_number }}"
+          class="proof-image"
+        />
+      {% endfor %}
+    </section>
+    {% endif %}
   </section>
   {% endif %}
 </section>
